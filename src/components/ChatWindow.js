@@ -1,6 +1,8 @@
 import React, { useState, useRef, useEffect } from 'react';
 import styled from 'styled-components';
 import axios from 'axios';
+import ReactMarkdown from 'react-markdown';
+import { sendMessageToClaude } from '../services/chatService';
 
 const Container = styled.div`
   display: flex;
@@ -20,6 +22,8 @@ const MessagesContainer = styled.div`
   flex: 1;
   overflow-y: auto;
   padding: 10px;
+  display: flex;
+  flex-direction: column;
 `;
 
 const MessageBubble = styled.div`
@@ -31,6 +35,35 @@ const MessageBubble = styled.div`
   align-self: ${props => props.isUser ? 'flex-end' : 'flex-start'};
   margin-left: ${props => props.isUser ? 'auto' : '0'};
   margin-right: ${props => props.isUser ? '0' : 'auto'};
+  white-space: pre-wrap;
+  
+  & p {
+    margin-top: 0;
+  }
+  
+  & p:last-child {
+    margin-bottom: 0;
+  }
+  
+  & code {
+    font-family: monospace;
+    background-color: rgba(0, 0, 0, 0.05);
+    padding: 2px 4px;
+    border-radius: 3px;
+  }
+  
+  & pre {
+    background-color: rgba(0, 0, 0, 0.05);
+    padding: 10px;
+    border-radius: 5px;
+    overflow-x: auto;
+    margin: 10px 0;
+  }
+  
+  & pre code {
+    background-color: transparent;
+    padding: 0;
+  }
 `;
 
 const InputContainer = styled.div`
@@ -88,29 +121,21 @@ const ChatWindow = () => {
     setInput('');
     setIsLoading(true);
 
-    // Mock API call to Claude
-    // In a real implementation, you would call your Claude API endpoint
     try {
-      // Replace with actual Claude API call
-      setTimeout(() => {
-        const claudeResponse = {
-          text: "This is a mock response from Claude. In a real implementation, this would be the response from the actual Claude API.",
-          isUser: false,
-        };
-        
-        setMessages(prev => [...prev, claudeResponse]);
-        setIsLoading(false);
-      }, 1000);
+      // Call the Claude API service
+      const claudeResponse = await sendMessageToClaude(input);
       
-      // Example of how the actual API call might look:
-      // const response = await axios.post('/api/claude', { message: input });
-      // setMessages(prev => [...prev, { text: response.data.message, isUser: false }]);
+      setMessages(prev => [...prev, { 
+        text: claudeResponse,
+        isUser: false 
+      }]);
     } catch (error) {
       console.error('Error sending message to Claude:', error);
       setMessages(prev => [...prev, { 
         text: "Sorry, there was an error communicating with Claude.", 
         isUser: false 
       }]);
+    } finally {
       setIsLoading(false);
     }
   };
@@ -128,12 +153,18 @@ const ChatWindow = () => {
       <MessagesContainer>
         {messages.map((message, index) => (
           <MessageBubble key={index} isUser={message.isUser}>
-            {message.text}
+            {message.isUser ? (
+              message.text
+            ) : (
+              <ReactMarkdown>
+                {message.text}
+              </ReactMarkdown>
+            )}
           </MessageBubble>
         ))}
         {isLoading && (
           <MessageBubble isUser={false}>
-            Claude is typing...
+            Claude is thinking...
           </MessageBubble>
         )}
         <div ref={messagesEndRef} />
